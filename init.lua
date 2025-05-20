@@ -219,6 +219,88 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+-- Set up folding with treesitter (zo/zc) (for everything by default)
+vim.opt.foldmethod = 'expr'
+vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
+
+-- Fixing Python Folding
+-- 1. First, let's set up a function to customize Treesitter's fold query for Python
+local function setup_improved_python_folding()
+  -- Define a more comprehensive Python fold query that includes imports
+  local python_folds_query = [[
+    ; Folds for import statements
+    (import_statement) @fold
+    (import_from_statement) @fold
+    
+    ; Groups of imports can be folded together
+    (module) @fold
+    
+    ; Regular function and class definitions (already handled by default, but included for completeness)
+    (function_definition) @fold
+    (class_definition) @fold
+    
+    ; Fold blocks like if/else, try/except, for, while, with
+    (if_statement) @fold
+    (for_statement) @fold
+    (while_statement) @fold
+    (with_statement) @fold
+    (try_statement) @fold
+    
+    ; Multiline expressions
+    (list) @fold
+    (dictionary) @fold
+    (set) @fold
+    (tuple) @fold
+  ]]
+
+  -- Register the custom query
+  -- Safely try to load the treesitter query module
+  local has_ts, ts_query = pcall(require, 'nvim-treesitter.query')
+  if has_ts and ts_query then
+    -- Try to add our custom query
+    local ok, err = pcall(function()
+      vim.treesitter.query.set('python', 'folds', python_folds_query)
+    end)
+
+    if not ok then
+      vim.notify('Failed to set custom Python fold query: ' .. tostring(err), vim.log.levels.WARN)
+    else
+      vim.notify('Custom Python folding query registered successfully', vim.log.levels.INFO)
+    end
+  end
+end
+
+-- 2. Set up autocmd for Python files to ensure expr folding works
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'python',
+  callback = function()
+    -- Setup the improved folding if not done already
+    setup_improved_python_folding()
+
+    -- Set fold method to expr with treesitter
+    vim.opt_local.foldmethod = 'expr'
+    vim.opt_local.foldexpr = 'nvim_treesitter#foldexpr()'
+
+    -- Don't start with everything folded
+    vim.opt_local.foldlevel = 99
+
+    -- Optional: better fold text for Python
+    vim.opt_local.foldtext = [[substitute(getline(v:foldstart),'\\t',repeat('\ ',&tabstop),'g').' ... '.trim(getline(v:foldend))]]
+
+    -- Create mappings for easy toggling between fold methods if needed
+    vim.keymap.set('n', '<leader>tf', function()
+      if vim.wo.foldmethod == 'expr' then
+        vim.opt_local.foldmethod = 'indent'
+        vim.notify('Switched to indent folding', vim.log.levels.INFO)
+      else
+        vim.opt_local.foldmethod = 'expr'
+        vim.opt_local.foldexpr = 'nvim_treesitter#foldexpr()'
+        vim.notify('Switched to treesitter folding', vim.log.levels.INFO)
+      end
+    end, { buffer = true, desc = 'Toggle fold method (treesitter/indent)' })
+  end,
+})
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -679,11 +761,22 @@ require('lazy').setup({
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
-        --
-        -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
-        --
+        pyright = {
+          cmd = { 'pyright-langserver', '--stdio' },
+          filetypes = { 'python' },
+          root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', 'pyrightconfig.json', '.git' },
+          settings = {
+            python = {
+              analysis = {
+                autoSearchPaths = true,
+                diagnosticMode = 'openFilesOnly',
+                useLibraryCodeForTypes = true,
+              },
+            },
+          },
+        },
 
+        --
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -734,6 +827,25 @@ require('lazy').setup({
         },
       }
     end,
+  },
+
+  {
+    'linux-cultist/venv-selector.nvim',
+    dependencies = { 'neovim/nvim-lspconfig', 'nvim-telescope/telescope.nvim', 'mfussenegger/nvim-dap-python' },
+    opts = {
+      -- Your options go here
+      -- name = "venv",
+      -- auto_refresh = false
+      anaconda_base_path = '/Users/alex/miniconda3',
+      anaconda_envs_path = '/Users/alex/miniconda3/envs/',
+    },
+    event = 'VeryLazy', -- Optional: needed only if you want to type `:VenvSelect` without a keymapping
+    keys = {
+      -- Keymap to open VenvSelector to pick a venv.
+      { '<leader>vs', '<cmd>VenvSelect<cr>' },
+      -- Keymap to retrieve the venv from a cache (the one previously used for the same project directory).
+      { '<leader>vc', '<cmd>VenvSelectCached<cr>' },
+    },
   },
 
   { -- Autoformat
@@ -830,12 +942,12 @@ require('lazy').setup({
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
+          {
+            'rafamadriz/friendly-snippets',
+            config = function()
+              require('luasnip.loaders.from_vscode').lazy_load()
+            end,
+          },
         },
         opts = {},
       },
@@ -866,7 +978,7 @@ require('lazy').setup({
         -- <c-k>: Toggle signature help
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
-        preset = 'default',
+        preset = 'enter',
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
@@ -881,7 +993,7 @@ require('lazy').setup({
       completion = {
         -- By default, you may press `<c-space>` to show the documentation.
         -- Optionally, set `auto_show = true` to show the documentation after a delay.
-        documentation = { auto_show = false, auto_show_delay_ms = 500 },
+        documentation = { auto_show = true, auto_show_delay_ms = 500 },
       },
 
       sources = {
@@ -989,7 +1101,7 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'c', 'cuda', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -1019,7 +1131,7 @@ require('lazy').setup({
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
   -- require 'kickstart.plugins.debug',
-  -- require 'kickstart.plugins.indent_line',
+  require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
