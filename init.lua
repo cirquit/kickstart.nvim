@@ -570,7 +570,11 @@ require('lazy').setup({
           ensure_installed = {
             'mypy',
             'ruff',
-            'pyright',
+            --  'pyright', -- this needs npm, if used remotely install with pip
+            'black',
+            'clangd',
+            'isort',
+            'clang-format',
           },
         },
       },
@@ -1043,18 +1047,13 @@ require('lazy').setup({
           comments = { italic = false }, -- Disable italics in comments
         },
       }
-
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'vague'
     end,
   },
 
   {
     'vague2k/vague.nvim',
+    priority = 1000,
     config = function()
-      -- INFO: you do not need to call setup if you don't want to.
       require('vague').setup {
         style = {
           comments = 'none',
@@ -1062,6 +1061,10 @@ require('lazy').setup({
           keywords_return = 'none',
         },
       }
+      -- Load the colorscheme here.
+      -- Like many other themes, this one has different styles, and you could load
+      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+      vim.cmd.colorscheme 'vague'
     end,
   },
 
