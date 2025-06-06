@@ -845,6 +845,7 @@ require('lazy').setup({
       -- Your options go here
       -- name = "venv",
       -- auto_refresh = false
+      stay_on_this_version = true,
       anaconda_base_path = '/Users/alex/miniconda3',
       anaconda_envs_path = '/Users/alex/miniconda3/envs/',
     },
