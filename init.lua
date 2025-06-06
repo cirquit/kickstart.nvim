@@ -568,13 +568,14 @@ require('lazy').setup({
         'mason-org/mason.nvim',
         opts = {
           ensure_installed = {
-            'mypy',
-            'ruff',
+            -- using mason-tool-installer
+            -- 'mypy',
+            -- 'ruff',
             --  'pyright', -- this needs npm, if used remotely install with pip
-            'black',
-            'clangd',
-            'isort',
-            'clang-format',
+            -- 'black',
+            -- 'clangd',
+            -- 'isort',
+            -- 'clang-format',
           },
         },
       },
@@ -822,6 +823,12 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'black', -- Python formatter
+        'isort', -- Python import sorter
+        'mypy', -- Python type checker
+        'ruff', -- Python linter
+        'clangd', -- C/C++ LSP
+        'clang-format', -- C/C++ formatter
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
