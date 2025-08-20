@@ -169,6 +169,8 @@ vim.o.confirm = true
 -- Replace \t with actual spaces when using <Tab>
 vim.opt.expandtab = true
 
+vim.opt.termguicolors = true
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -492,11 +494,11 @@ require('lazy').setup({
         -- You can put your default mappings / updates / etc. in here
         --  All the info you're looking for is in `:help telescope.setup()`
         --
-        -- defaults = {
-        --   mappings = {
-        --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-        --   },
-        -- },
+        defaults = {
+          mappings = {
+            i = { ['<C-q>'] = require('telescope.actions').smart_send_to_qflist + require('telescope.actions').open_qflist },
+          },
+        },
         -- pickers = {}
         extensions = {
           ['ui-select'] = {
@@ -778,20 +780,20 @@ require('lazy').setup({
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
-        pyright = {
-          cmd = { 'pyright-langserver', '--stdio' },
-          filetypes = { 'python' },
-          root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', 'pyrightconfig.json', '.git' },
-          settings = {
-            python = {
-              analysis = {
-                autoSearchPaths = true,
-                diagnosticMode = 'openFilesOnly',
-                useLibraryCodeForTypes = true,
-              },
-            },
-          },
-        },
+        -- pyright = {
+        --   cmd = { vim.fn.expand '$CONDA_PREFIX/bin/pyright-langserver', '--stdio' },
+        --   filetypes = { 'python' },
+        --   root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', 'pyrightconfig.json', '.git' },
+        --   settings = {
+        --     python = {
+        --       analysis = {
+        --         autoSearchPaths = true,
+        --         diagnosticMode = 'openFilesOnly',
+        --         useLibraryCodeForTypes = true,
+        --       },
+        --     },
+        --   },
+        -- },
 
         --
         lua_ls = {
@@ -840,6 +842,10 @@ require('lazy').setup({
         automatic_installation = false,
         handlers = {
           function(server_name)
+            -- Skip pyright since we're managing it manually
+            if server_name == 'pyright' then
+              return
+            end
             local server = servers[server_name] or {}
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
@@ -847,6 +853,20 @@ require('lazy').setup({
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
+        },
+      }
+      -- Setup pyright manually after Mason
+      require('lspconfig').pyright.setup {
+        cmd = { vim.fn.expand '$CONDA_PREFIX/bin/pyright-langserver', '--stdio' },
+        filetypes = { 'python' },
+        settings = {
+          python = {
+            analysis = {
+              autoSearchPaths = true,
+              diagnosticMode = 'openFilesOnly',
+              useLibraryCodeForTypes = true,
+            },
+          },
         },
       }
     end,
@@ -859,9 +879,13 @@ require('lazy').setup({
       -- Your options go here
       -- name = "venv",
       -- auto_refresh = false
-      stay_on_this_version = true,
-      anaconda_base_path = '/Users/aerben/miniconda3',
-      anaconda_envs_path = '/Users/aerben/miniconda3/envs/',
+      -- pipenv_path = '/home/aerben/envs/',
+      -- pyenv_path = '/home/aerben/envs/',
+      -- anaconda_envs_path = '/home/aerben/envs/',
+      -- anaconda_base_path = '/home/aerben/envs/',
+      path = '/opt/hpcaas/.mounts/fs-072917c00f01ae1ba/home/aerben/envs/',
+      -- parents = 0,
+      -- stay_on_this_version = true,
     },
     lazy = false,
     branch = 'regexp', -- This is the regexp branch, use this for the new version
