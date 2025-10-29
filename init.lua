@@ -202,6 +202,22 @@ vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right win
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
+-- Custom fold toggle: zz to toggle folds
+-- When opening: open all nested folds (like zA)
+-- When closing: just close the top-level fold (like zc)
+vim.keymap.set('n', 'zz', function()
+  local line = vim.fn.line('.')
+  local foldclosed = vim.fn.foldclosed(line)
+
+  if foldclosed == -1 then
+    -- Fold is open, just close it
+    vim.cmd('normal! zc')
+  else
+    -- Fold is closed, open it and all nested folds
+    vim.cmd('normal! zA')
+  end
+end, { desc = 'Toggle fold (open all nested, close top-level)' })
+
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
 -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
 -- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
