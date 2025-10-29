@@ -222,85 +222,193 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
--- Set up folding with treesitter (zo/zc) (for everything by default)
-vim.opt.foldmethod = 'expr'
-vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
-
--- Fixing Python Folding
--- 1. First, let's set up a function to customize Treesitter's fold query for Python
-local function setup_improved_python_folding()
-  -- Define a more comprehensive Python fold query that includes imports
-  local python_folds_query = [[
-    ; Folds for import statements
-    (import_statement) @fold
-    (import_from_statement) @fold
-    
-    ; Groups of imports can be folded together
-    (module) @fold
-    
-    ; Regular function and class definitions (already handled by default, but included for completeness)
-    (function_definition) @fold
-    (class_definition) @fold
-    
-    ; Fold blocks like if/else, try/except, for, while, with
-    (if_statement) @fold
-    (for_statement) @fold
-    (while_statement) @fold
-    (with_statement) @fold
-    (try_statement) @fold
-    
-    ; Multiline expressions
-    (list) @fold
-    (dictionary) @fold
-    (set) @fold
-    (tuple) @fold
-  ]]
-
-  -- Register the custom query
-  -- Safely try to load the treesitter query module
-  local has_ts, ts_query = pcall(require, 'nvim-treesitter.query')
-  if has_ts and ts_query then
-    -- Try to add our custom query
-    local ok, err = pcall(function()
-      vim.treesitter.query.set('python', 'folds', python_folds_query)
-    end)
-
-    if not ok then
-      vim.notify('Failed to set custom Python fold query: ' .. tostring(err), vim.log.levels.WARN)
-    else
-      vim.notify('Custom Python folding query registered successfully', vim.log.levels.INFO)
-    end
-  end
-end
-
--- 2. Set up autocmd for Python files to ensure expr folding works
+-- [[ Python Folding Configuration ]]
 vim.api.nvim_create_autocmd('FileType', {
   pattern = 'python',
   callback = function()
-    -- Setup the improved folding if not done already
-    setup_improved_python_folding()
+    -- Back to simple indent folding that works reliably
+    vim.wo.foldmethod = 'indent'
+    vim.wo.foldlevel = 99 -- Start with everything open
 
-    -- Set fold method to expr with treesitter
-    vim.opt_local.foldmethod = 'expr'
-    vim.opt_local.foldexpr = 'nvim_treesitter#foldexpr()'
+    -- Custom fold text: show function signature + line count, skip docstrings
+    vim.wo.foldtext = 'v:lua.python_foldtext()'
 
-    -- Don't start with everything folded
-    vim.opt_local.foldlevel = 99
+    -- Complexity analysis functions
+    local function is_code_line(line)
+      -- Skip comments, docstrings, and empty lines
+      local trimmed = line:gsub('^%s*', '')
+      return not trimmed:match '^#' and not trimmed:match '^"""' and not trimmed:match "^'''" and trimmed ~= ''
+    end
 
-    -- Optional: better fold text for Python
-    vim.opt_local.foldtext = [[substitute(getline(v:foldstart),'\\t',repeat('\ ',&tabstop),'g').' ... '.trim(getline(v:foldend))]]
+    local function calculate_cyclomatic_complexity(start_line, end_line)
+      local complexity = 1 -- Base complexity
 
-    -- Create mappings for easy toggling between fold methods if needed
-    vim.keymap.set('n', '<leader>tf', function()
-      if vim.wo.foldmethod == 'expr' then
-        vim.opt_local.foldmethod = 'indent'
-        vim.notify('Switched to indent folding', vim.log.levels.INFO)
-      else
-        vim.opt_local.foldmethod = 'expr'
-        vim.opt_local.foldexpr = 'nvim_treesitter#foldexpr()'
-        vim.notify('Switched to treesitter folding', vim.log.levels.INFO)
+      for i = start_line, end_line do
+        local trimmed = vim.fn.getline(i):gsub('^%s*', '')
+
+        if is_code_line(vim.fn.getline(i)) then
+          -- Count decision points that create new execution paths
+          if
+            trimmed:match '^if '
+            or trimmed:match '^elif '
+            or trimmed:match '^for '
+            or trimmed:match '^while '
+            or trimmed:match '^try:'
+            or trimmed:match '^except'
+          then
+            complexity = complexity + 1
+          end
+        end
       end
-    end, { buffer = true, desc = 'Toggle fold method (treesitter/indent)' })
+
+      return complexity
+    end
+
+    local function calculate_branch_density(start_line, end_line)
+      local lines_in_branches = 0
+      local total_code_lines = 0
+      local base_indent = vim.fn.indent(start_line - 1) / vim.bo.shiftwidth
+
+      for i = start_line, end_line do
+        local line = vim.fn.getline(i)
+
+        if is_code_line(line) then
+          total_code_lines = total_code_lines + 1
+
+          local indent_level = math.floor(vim.fn.indent(i) / vim.bo.shiftwidth)
+          -- Count lines indented beyond function body level
+          if indent_level > base_indent + 1 then
+            lines_in_branches = lines_in_branches + 1
+          end
+        end
+      end
+
+      return total_code_lines > 0 and math.floor((lines_in_branches / total_code_lines) * 100) or 0
+    end
+
+    local function generate_complexity_descriptors(start_line, end_line, branch_density)
+      local try_count, loop_count, if_count = 0, 0, 0
+
+      for i = start_line, end_line do
+        local trimmed = vim.fn.getline(i):gsub('^%s*', '')
+
+        if trimmed:match '^try:' or trimmed:match '^except' then
+          try_count = try_count + 1
+        elseif trimmed:match '^for ' or trimmed:match '^while ' then
+          loop_count = loop_count + 1
+        elseif trimmed:match '^if ' or trimmed:match '^elif ' then
+          if_count = if_count + 1
+        end
+      end
+
+      local descriptors = {}
+
+      if try_count > 0 then
+        table.insert(descriptors, 'error-handling')
+      end
+
+      if loop_count >= 2 then
+        table.insert(descriptors, 'loop-heavy')
+      elseif loop_count > 0 and if_count > 0 then
+        table.insert(descriptors, 'nested')
+      elseif if_count >= 3 then
+        table.insert(descriptors, 'conditional')
+      end
+
+      if branch_density > 80 then
+        table.insert(descriptors, 'dense')
+      end
+
+      return descriptors
+    end
+
+    local function format_complexity_display(metrics)
+      -- metrics = { line_count, cyclomatic_complexity, branch_density, descriptors }
+      local parts = {}
+
+      table.insert(parts, metrics.line_count .. 'loc')
+      table.insert(parts, 'CC:' .. metrics.cyclomatic_complexity)
+
+      if metrics.branch_density > 0 then
+        table.insert(parts, metrics.branch_density .. '%br')
+      end
+
+      local complexity = '⟨ ' .. table.concat(parts, ' • ') .. ' ⟩'
+
+      if #metrics.descriptors > 0 then
+        complexity = complexity .. ' ' .. table.concat(metrics.descriptors, ' ')
+      end
+
+      return '    ' .. complexity
+    end
+
+    -- Main fold text function - orchestrates complexity analysis
+    _G.python_foldtext = function()
+      local start_line = vim.v.foldstart
+      local end_line = vim.v.foldend
+      local line_count = end_line - start_line + 1
+
+      local cyclomatic_complexity = calculate_cyclomatic_complexity(start_line, end_line)
+      local branch_density = calculate_branch_density(start_line, end_line)
+      local descriptors = generate_complexity_descriptors(start_line, end_line, branch_density)
+
+      local metrics = {
+        line_count = line_count,
+        cyclomatic_complexity = cyclomatic_complexity,
+        branch_density = branch_density,
+        descriptors = descriptors,
+      }
+
+      return format_complexity_display(metrics)
+    end
+
+    -- Smart folding: fold bodies, unfold arguments
+    vim.keymap.set('n', '<leader>zf', function()
+      -- Step 1: Fold everything at indent level 1+
+      vim.wo.foldlevel = 1
+
+      -- -- Step 2: Find and unfold function argument sections
+      -- local lines = vim.api.nvim_buf_line_count(0)
+      --
+      -- for i = 1, lines do
+      --   local line = vim.fn.getline(i)
+      --
+      --   -- Found a function definition
+      --   if line:match('^%s*def ') then
+      --     -- Check if it's a multi-line signature (no '):' on this line)
+      --     if not line:match('%):') then
+      --       -- Find where the signature ends
+      --       local signature_end = nil
+      --       for j = i + 1, math.min(i + 15, lines) do  -- Look ahead max 15 lines
+      --         local check_line = vim.fn.getline(j)
+      --         if check_line:match('%):') then
+      --           signature_end = j
+      --           break
+      --         end
+      --       end
+      --
+      --       -- If we found the end of signature, unfold that range
+      --       if signature_end then
+      --         for arg_line = i + 1, signature_end do
+      --           if vim.fn.foldclosed(arg_line) ~= -1 then
+      --             vim.fn.cursor(arg_line, 1)
+      --             vim.cmd('normal! zo')
+      --             break  -- Opening one line in the fold opens the whole fold
+      --           end
+      --         end
+      --       end
+      --     end
+      --   end
+      -- end
+    end, { buffer = true, desc = 'Close function bodies, keep args visible' })
+
+    vim.keymap.set('n', '<leader>zo', function()
+      vim.wo.foldlevel = 99
+    end, { buffer = true, desc = 'Open all folds' })
+
+    vim.keymap.set('n', '<leader>zc', function()
+      vim.wo.foldlevel = 0
+    end, { buffer = true, desc = 'Close everything' })
   end,
 })
 
