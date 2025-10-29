@@ -219,85 +219,36 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
--- Set up folding with treesitter (zo/zc) (for everything by default)
-vim.opt.foldmethod = 'expr'
-vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
-
--- Fixing Python Folding
--- 1. First, let's set up a function to customize Treesitter's fold query for Python
-local function setup_improved_python_folding()
-  -- Define a more comprehensive Python fold query that includes imports
-  local python_folds_query = [[
-    ; Folds for import statements
-    (import_statement) @fold
-    (import_from_statement) @fold
-    
-    ; Groups of imports can be folded together
-    (module) @fold
-    
-    ; Regular function and class definitions (already handled by default, but included for completeness)
-    (function_definition) @fold
-    (class_definition) @fold
-    
-    ; Fold blocks like if/else, try/except, for, while, with
-    (if_statement) @fold
-    (for_statement) @fold
-    (while_statement) @fold
-    (with_statement) @fold
-    (try_statement) @fold
-    
-    ; Multiline expressions
-    (list) @fold
-    (dictionary) @fold
-    (set) @fold
-    (tuple) @fold
-  ]]
-
-  -- Register the custom query
-  -- Safely try to load the treesitter query module
-  local has_ts, ts_query = pcall(require, 'nvim-treesitter.query')
-  if has_ts and ts_query then
-    -- Try to add our custom query
-    local ok, err = pcall(function()
-      vim.treesitter.query.set('python', 'folds', python_folds_query)
-    end)
-
-    if not ok then
-      vim.notify('Failed to set custom Python fold query: ' .. tostring(err), vim.log.levels.WARN)
-    else
-      vim.notify('Custom Python folding query registered successfully', vim.log.levels.INFO)
-    end
-  end
-end
-
--- 2. Set up autocmd for Python files to ensure expr folding works
+-- [[ Python Folding Configuration ]]
 vim.api.nvim_create_autocmd('FileType', {
   pattern = 'python',
   callback = function()
-    -- Setup the improved folding if not done already
-    setup_improved_python_folding()
+    -- Use indent folding for Python files
+    vim.wo.foldmethod = 'indent'
+    vim.wo.foldlevel = 99 -- Start with everything open
 
-    -- Set fold method to expr with treesitter
-    vim.opt_local.foldmethod = 'expr'
-    vim.opt_local.foldexpr = 'nvim_treesitter#foldexpr()'
-
-    -- Don't start with everything folded
-    vim.opt_local.foldlevel = 99
-
-    -- Optional: better fold text for Python
-    vim.opt_local.foldtext = [[substitute(getline(v:foldstart),'\\t',repeat('\ ',&tabstop),'g').' ... '.trim(getline(v:foldend))]]
-
-    -- Create mappings for easy toggling between fold methods if needed
-    vim.keymap.set('n', '<leader>tf', function()
-      if vim.wo.foldmethod == 'expr' then
-        vim.opt_local.foldmethod = 'indent'
-        vim.notify('Switched to indent folding', vim.log.levels.INFO)
-      else
-        vim.opt_local.foldmethod = 'expr'
-        vim.opt_local.foldexpr = 'nvim_treesitter#foldexpr()'
-        vim.notify('Switched to treesitter folding', vim.log.levels.INFO)
+    -- Smart folding keymaps: close function bodies but keep signatures visible
+    vim.keymap.set('n', '<leader>zf', function()
+      local lines = vim.api.nvim_buf_line_count(0)
+      for i = 1, lines do
+        local line = vim.fn.getline(i)
+        if line:match('^%s*def ') then
+          vim.fn.cursor(i, 1)
+          if i < lines then
+            vim.fn.cursor(i + 1, 1)
+            pcall(vim.cmd, 'normal! zc')
+          end
+        end
       end
-    end, { buffer = true, desc = 'Toggle fold method (treesitter/indent)' })
+    end, { buffer = true, desc = 'Close all function bodies' })
+
+    vim.keymap.set('n', '<leader>zo', function()
+      vim.wo.foldlevel = 99
+    end, { buffer = true, desc = 'Open all folds' })
+
+    vim.keymap.set('n', '<leader>zc', function()
+      vim.wo.foldlevel = 0
+    end, { buffer = true, desc = 'Close everything' })
   end,
 })
 
