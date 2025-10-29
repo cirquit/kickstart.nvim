@@ -166,6 +166,9 @@ vim.o.scrolloff = 10
 -- See `:help 'confirm'`
 vim.o.confirm = true
 
+-- Replace \t with actual spaces when using <Tab>
+vim.opt.expandtab = true
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -440,11 +443,11 @@ require('lazy').setup({
         -- You can put your default mappings / updates / etc. in here
         --  All the info you're looking for is in `:help telescope.setup()`
         --
-        -- defaults = {
-        --   mappings = {
-        --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-        --   },
-        -- },
+        defaults = {
+          mappings = {
+            i = { ['<C-q>'] = require('telescope.actions').smart_send_to_qflist + require('telescope.actions').open_qflist },
+          },
+        },
         -- pickers = {}
         extensions = {
           ['ui-select'] = {
@@ -808,9 +811,11 @@ require('lazy').setup({
       -- name = "venv",
       -- auto_refresh = false
       stay_on_this_version = true,
-      anaconda_base_path = '/Users/alex/miniconda3',
-      anaconda_envs_path = '/Users/alex/miniconda3/envs/',
+      anaconda_base_path = '/Users/aerben/miniconda3',
+      anaconda_envs_path = '/Users/aerben/miniconda3/envs/',
     },
+    lazy = false,
+    branch = 'regexp', -- This is the regexp branch, use this for the new version
     event = 'VeryLazy', -- Optional: needed only if you want to type `:VenvSelect` without a keymapping
     keys = {
       -- Keymap to open VenvSelector to pick a venv.
@@ -1022,7 +1027,7 @@ require('lazy').setup({
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight'
+      vim.cmd.colorscheme 'vague'
     end,
   },
 
@@ -1142,12 +1147,12 @@ require('lazy').setup({
           },
           {
             provider = 'ollama',
-            name = 'qwen2.5-coder:32b',
+            name = 'qwen2.5-coder:14b',
             chat = true,
             command = true,
             -- string with model name or table with model name and parameters
             model = {
-              model = 'qwen2.5-coder:32b',
+              model = 'qwen2.5-coder:14b',
             },
             -- system prompt (use this to specify the persona/role of the AI)
             system_prompt = require('gp.defaults').code_system_prompt,
