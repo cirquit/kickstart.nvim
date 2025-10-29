@@ -960,27 +960,27 @@ require('lazy').setup({
     end,
   },
 
-  {
-    'linux-cultist/venv-selector.nvim',
-    dependencies = { 'neovim/nvim-lspconfig', 'nvim-telescope/telescope.nvim', 'mfussenegger/nvim-dap-python' },
-    opts = {
-      -- Your options go here
-      -- name = "venv",
-      -- auto_refresh = false
-      stay_on_this_version = true,
-      anaconda_base_path = '/Users/aerben/miniconda3',
-      anaconda_envs_path = '/Users/aerben/miniconda3/envs/',
-    },
-    lazy = false,
-    branch = 'regexp', -- This is the regexp branch, use this for the new version
-    event = 'VeryLazy', -- Optional: needed only if you want to type `:VenvSelect` without a keymapping
-    keys = {
-      -- Keymap to open VenvSelector to pick a venv.
-      { '<leader>vs', '<cmd>VenvSelect<cr>' },
-      -- Keymap to retrieve the venv from a cache (the one previously used for the same project directory).
-      { '<leader>vc', '<cmd>VenvSelectCached<cr>' },
-    },
-  },
+  -- {
+  --   'linux-cultist/venv-selector.nvim',
+  --   dependencies = { 'neovim/nvim-lspconfig', 'nvim-telescope/telescope.nvim', 'mfussenegger/nvim-dap-python' },
+  --   opts = {
+  --     -- Your options go here
+  --     -- name = "venv",
+  --     -- auto_refresh = false
+  --     stay_on_this_version = true,
+  --     anaconda_base_path = '/Users/aerben/miniconda3',
+  --     anaconda_envs_path = '/Users/aerben/miniconda3/envs/',
+  --   },
+  --   lazy = false,
+  --   branch = 'regexp', -- This is the regexp branch, use this for the new version
+  --   event = 'VeryLazy', -- Optional: needed only if you want to type `:VenvSelect` without a keymapping
+  --   keys = {
+  --     -- Keymap to open VenvSelector to pick a venv.
+  --     { '<leader>vs', '<cmd>VenvSelect<cr>' },
+  --     -- Keymap to retrieve the venv from a cache (the one previously used for the same project directory).
+  --     { '<leader>vc', '<cmd>VenvSelectCached<cr>' },
+  --   },
+  -- },
 
   { -- Autoformat
     'stevearc/conform.nvim',
@@ -1167,30 +1167,37 @@ require('lazy').setup({
           comments = { italic = false }, -- Disable italics in comments
         },
       }
+      vim.cmd.colorscheme 'tokyonight'
     end,
   },
 
-  {
-    'vague2k/vague.nvim',
-    priority = 1000,
-    config = function()
-      require('vague').setup {
-        style = {
-          comments = 'none',
-          strings = 'none',
-          keywords_return = 'none',
-        },
-      }
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'vague'
-    end,
-  },
-
+  -- {
+  --   'vague2k/vague.nvim',
+  --   priority = 1000,
+  --   config = function()
+  --     require('vague').setup {
+  --       style = {
+  --         comments = 'none',
+  --         strings = 'none',
+  --         keywords_return = 'none',
+  --       },
+  --     }
+  --     -- Load the colorscheme here.
+  --     -- Like many other themes, this one has different styles, and you could load
+  --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+  --     vim.cmd.colorscheme 'vague'
+  --   end,
+  -- },
+  --
   -- Highlight todo, notes, etc in comments
-  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
-
+  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false },
+    highlight = {
+      pattern = [[.*<(KEYWORDS)(\([^\)]*\))?\s*:]], -- matches TODO(name): format
+    },
+    search = {
+      pattern = [[\b(KEYWORDS)(\([^\)]*\))?\s*:]], -- matches TODO(name): format
+    },
+  },
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
@@ -1278,7 +1285,6 @@ require('lazy').setup({
       require('window-picker').setup()
     end,
   },
-
   {
     'robitx/gp.nvim',
     config = function()
