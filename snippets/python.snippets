@@ -232,6 +232,9 @@ snippet pudb
 snippet pudbr
 	from pudb.remote import set_trace
 	set_trace()
+snippet pudbrr
+	from pudb.remote import set_trace
+	set_trace(host="rsccpu4025.hco1.facebook.com", port=12345, term_size=(140, 40), reverse=True)
 # pdb in nosetests
 snippet nosetrace
 	__import__('nose').tools.set_trace()
