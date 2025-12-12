@@ -240,6 +240,21 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+-- Automatically strip trailing whitespace on save
+vim.api.nvim_create_autocmd('BufWritePre', {
+  desc = 'Strip trailing whitespace on save',
+  group = vim.api.nvim_create_augroup('strip-whitespace', { clear = true }),
+  pattern = '*',
+  callback = function()
+    -- Save cursor position
+    local save_cursor = vim.fn.getpos('.')
+    -- Remove trailing whitespace
+    vim.cmd([[%s/\s\+$//e]])
+    -- Restore cursor position
+    vim.fn.setpos('.', save_cursor)
+  end,
+})
+
 -- [[ Python Folding Configuration ]]
 vim.api.nvim_create_autocmd('FileType', {
   pattern = 'python',
@@ -944,6 +959,7 @@ require('lazy').setup({
         'isort', -- Python import sorter
         'mypy', -- Python type checker
         'ruff', -- Python linter
+        'flake8', -- Python linter
         'clangd', -- C/C++ LSP
         'clang-format', -- C/C++ formatter
       })
@@ -1323,7 +1339,7 @@ require('lazy').setup({
   --
   -- require 'kickstart.plugins.debug',
   require 'kickstart.plugins.indent_line',
-  -- require 'kickstart.plugins.lint',
+  require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
