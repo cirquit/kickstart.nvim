@@ -965,8 +965,8 @@ require('lazy').setup({
         },
       }
 
-      -- Setup basedpyright separately, outside Mason's control
-      -- Uses $VIRTUAL_ENV to detect the active Python environment
+      -- Setup basedpyright using the new vim.lsp.config API (Nvim 0.11+)
+      -- Following official migration instructions from lspconfig docs
       local function get_python_path()
         local venv = vim.env.VIRTUAL_ENV
         if venv then
@@ -983,11 +983,36 @@ require('lazy').setup({
         return { 'basedpyright-langserver', '--stdio' }
       end
 
-      -- Use the old lspconfig API for now (deprecation warning is harmless)
-      require('lspconfig').basedpyright.setup {
+      -- Configure basedpyright
+      -- Using function call syntax to properly extend/merge the config
+      vim.lsp.config('basedpyright', {
         cmd = get_pyright_cmd(),
+        filetypes = { 'python' },
+        root_markers = {
+          'pyproject.toml',
+          'setup.py',
+          'setup.cfg',
+          'requirements.txt',
+          'Pipfile',
+          'pyrightconfig.json',
+          '.git',
+        },
         capabilities = capabilities,
         settings = {
+          basedpyright = {
+            analysis = {
+              typeCheckingMode = 'recommended',
+              diagnosticSeverityOverrides = {
+                reportUnusedImport = 'information',
+                reportUnusedVariable = 'information',
+--                reportMissingTypeStubs = 'none',
+--                reportUnknownParameterType = 'none',
+--                reportUnknownArgumentType = 'none',
+--                reportUnknownVariableType = 'none',
+--                reportUnknownMemberType = 'none',
+              },
+            },
+          },
           python = {
             pythonPath = get_python_path(),
             analysis = {
@@ -997,7 +1022,10 @@ require('lazy').setup({
             },
           },
         },
-      }
+      })
+
+      -- Enable the config for Python files
+      vim.lsp.enable('basedpyright')
     end,
   },
 
