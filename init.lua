@@ -169,6 +169,8 @@ vim.o.confirm = true
 -- Replace \t with actual spaces when using <Tab>
 vim.opt.expandtab = true
 
+vim.opt.termguicolors = true
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -206,15 +208,15 @@ vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper win
 -- When opening: open all nested folds (like zA)
 -- When closing: just close the top-level fold (like zc)
 vim.keymap.set('n', 'zz', function()
-  local line = vim.fn.line('.')
+  local line = vim.fn.line '.'
   local foldclosed = vim.fn.foldclosed(line)
 
   if foldclosed == -1 then
     -- Fold is open, just close it
-    vim.cmd('normal! zc')
+    vim.cmd 'normal! zc'
   else
     -- Fold is closed, open it and all nested folds
-    vim.cmd('normal! zA')
+    vim.cmd 'normal! zA'
   end
 end, { desc = 'Toggle fold (open all nested, close top-level)' })
 
@@ -902,20 +904,20 @@ require('lazy').setup({
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
-        pyright = {
-          cmd = { 'pyright-langserver', '--stdio' },
-          filetypes = { 'python' },
-          root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', 'pyrightconfig.json', '.git' },
-          settings = {
-            python = {
-              analysis = {
-                autoSearchPaths = true,
-                diagnosticMode = 'openFilesOnly',
-                useLibraryCodeForTypes = true,
-              },
-            },
-          },
-        },
+        -- pyright = {
+        --   cmd = { vim.fn.expand '$CONDA_PREFIX/bin/pyright-langserver', '--stdio' },
+        --   filetypes = { 'python' },
+        --   root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', 'pyrightconfig.json', '.git' },
+        --   settings = {
+        --     python = {
+        --       analysis = {
+        --         autoSearchPaths = true,
+        --         diagnosticMode = 'openFilesOnly',
+        --         useLibraryCodeForTypes = true,
+        --       },
+        --     },
+        --   },
+        -- },
 
         --
         lua_ls = {
@@ -964,6 +966,10 @@ require('lazy').setup({
         automatic_installation = false,
         handlers = {
           function(server_name)
+            -- Skip pyright since we're managing it manually
+            if server_name == 'pyright' then
+              return
+            end
             local server = servers[server_name] or {}
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
@@ -973,30 +979,48 @@ require('lazy').setup({
           end,
         },
       }
+      -- Setup pyright manually after Mason
+      require('lspconfig').pyright.setup {
+        cmd = { vim.fn.expand '/home/aerben/envs/nightly_pt280_cu128/bin/pyright-langserver', '--stdio' },
+        filetypes = { 'python' },
+        settings = {
+          python = {
+            analysis = {
+              autoSearchPaths = true,
+              diagnosticMode = 'openFilesOnly',
+              useLibraryCodeForTypes = true,
+            },
+          },
+        },
+      }
     end,
   },
 
-  -- {
-  --   'linux-cultist/venv-selector.nvim',
-  --   dependencies = { 'neovim/nvim-lspconfig', 'nvim-telescope/telescope.nvim', 'mfussenegger/nvim-dap-python' },
-  --   opts = {
-  --     -- Your options go here
-  --     -- name = "venv",
-  --     -- auto_refresh = false
-  --     stay_on_this_version = true,
-  --     anaconda_base_path = '/Users/aerben/miniconda3',
-  --     anaconda_envs_path = '/Users/aerben/miniconda3/envs/',
-  --   },
-  --   lazy = false,
-  --   branch = 'regexp', -- This is the regexp branch, use this for the new version
-  --   event = 'VeryLazy', -- Optional: needed only if you want to type `:VenvSelect` without a keymapping
-  --   keys = {
-  --     -- Keymap to open VenvSelector to pick a venv.
-  --     { '<leader>vs', '<cmd>VenvSelect<cr>' },
-  --     -- Keymap to retrieve the venv from a cache (the one previously used for the same project directory).
-  --     { '<leader>vc', '<cmd>VenvSelectCached<cr>' },
-  --   },
-  -- },
+  {
+    'linux-cultist/venv-selector.nvim',
+    dependencies = { 'neovim/nvim-lspconfig', 'nvim-telescope/telescope.nvim', 'mfussenegger/nvim-dap-python' },
+    opts = {
+      -- Your options go here
+      -- name = "venv",
+      -- auto_refresh = false
+      -- pipenv_path = '/home/aerben/envs/',
+      -- pyenv_path = '/home/aerben/envs/',
+      -- anaconda_envs_path = '/home/aerben/envs/',
+      -- anaconda_base_path = '/home/aerben/envs/',
+      path = '/home/aerben/envs/',
+      -- parents = 0,
+      -- stay_on_this_version = true,
+    },
+    lazy = false,
+    branch = 'regexp', -- This is the regexp branch, use this for the new version
+    event = 'VeryLazy', -- Optional: needed only if you want to type `:VenvSelect` without a keymapping
+    keys = {
+      -- Keymap to open VenvSelector to pick a venv.
+      { '<leader>vs', '<cmd>VenvSelect<cr>' },
+      -- Keymap to retrieve the venv from a cache (the one previously used for the same project directory).
+      { '<leader>vc', '<cmd>VenvSelectCached<cr>' },
+    },
+  },
 
   { -- Autoformat
     'stevearc/conform.nvim',
@@ -1206,7 +1230,11 @@ require('lazy').setup({
   -- },
   --
   -- Highlight todo, notes, etc in comments
-  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false },
+  {
+    'folke/todo-comments.nvim',
+    event = 'VimEnter',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    opts = { signs = false },
     highlight = {
       pattern = [[.*<(KEYWORDS)(\([^\)]*\))?\s*:]], -- matches TODO(name): format
     },
