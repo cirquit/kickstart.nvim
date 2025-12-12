@@ -899,26 +899,13 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         -- gopls = {},
-        -- pyright = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
-        -- pyright = {
-        --   cmd = { vim.fn.expand '$CONDA_PREFIX/bin/pyright-langserver', '--stdio' },
-        --   filetypes = { 'python' },
-        --   root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', 'pyrightconfig.json', '.git' },
-        --   settings = {
-        --     python = {
-        --       analysis = {
-        --         autoSearchPaths = true,
-        --         diagnosticMode = 'openFilesOnly',
-        --         useLibraryCodeForTypes = true,
-        --       },
-        --     },
-        --   },
-        -- },
+
+        -- NOTE: pyright is configured separately below, outside of Mason's control
 
         --
         lua_ls = {
@@ -967,25 +954,42 @@ require('lazy').setup({
         automatic_installation = false,
         handlers = {
           function(server_name)
-            -- Skip pyright since we're managing it manually
-            if server_name == 'pyright' then
-              return
-            end
             local server = servers[server_name] or {}
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
             -- certain features of an LSP (for example, turning off formatting for ts_ls)
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
+            vim.lsp.config[server_name] = server
+            vim.lsp.enable(server_name)
           end,
         },
       }
-      -- Setup pyright manually after Mason
-      require('lspconfig').pyright.setup {
-        cmd = { vim.fn.expand '/home/aerben/envs/nightly_pt280_cu128/bin/pyright-langserver', '--stdio' },
-        filetypes = { 'python' },
+
+      -- Setup basedpyright separately, outside Mason's control
+      -- Uses $VIRTUAL_ENV to detect the active Python environment
+      local function get_python_path()
+        local venv = vim.env.VIRTUAL_ENV
+        if venv then
+          return venv .. '/bin/python'
+        end
+        return 'python3'
+      end
+
+      local function get_pyright_cmd()
+        local venv = vim.env.VIRTUAL_ENV
+        if venv then
+          return { venv .. '/bin/basedpyright-langserver', '--stdio' }
+        end
+        return { 'basedpyright-langserver', '--stdio' }
+      end
+
+      -- Use the old lspconfig API for now (deprecation warning is harmless)
+      require('lspconfig').basedpyright.setup {
+        cmd = get_pyright_cmd(),
+        capabilities = capabilities,
         settings = {
           python = {
+            pythonPath = get_python_path(),
             analysis = {
               autoSearchPaths = true,
               diagnosticMode = 'openFilesOnly',
@@ -995,32 +999,6 @@ require('lazy').setup({
         },
       }
     end,
-  },
-
-  {
-    'linux-cultist/venv-selector.nvim',
-    dependencies = { 'neovim/nvim-lspconfig', 'nvim-telescope/telescope.nvim', 'mfussenegger/nvim-dap-python' },
-    opts = {
-      -- Your options go here
-      -- name = "venv",
-      -- auto_refresh = false
-      -- pipenv_path = '/home/aerben/envs/',
-      -- pyenv_path = '/home/aerben/envs/',
-      -- anaconda_envs_path = '/home/aerben/envs/',
-      -- anaconda_base_path = '/home/aerben/envs/',
-      path = '/home/aerben/envs/',
-      -- parents = 0,
-      -- stay_on_this_version = true,
-    },
-    lazy = false,
-    branch = 'regexp', -- This is the regexp branch, use this for the new version
-    event = 'VeryLazy', -- Optional: needed only if you want to type `:VenvSelect` without a keymapping
-    keys = {
-      -- Keymap to open VenvSelector to pick a venv.
-      { '<leader>vs', '<cmd>VenvSelect<cr>' },
-      -- Keymap to retrieve the venv from a cache (the one previously used for the same project directory).
-      { '<leader>vc', '<cmd>VenvSelectCached<cr>' },
-    },
   },
 
   { -- Autoformat
