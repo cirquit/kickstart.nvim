@@ -247,6 +247,7 @@ vim.api.nvim_create_autocmd('FileType', {
     -- Back to simple indent folding that works reliably
     vim.wo.foldmethod = 'indent'
     vim.wo.foldlevel = 99 -- Start with everything open
+    vim.o.foldclose = '' -- Never automatically close folds (global option)
 
     -- Custom fold text: show function signature + line count, skip docstrings
     vim.wo.foldtext = 'v:lua.python_foldtext()'
