@@ -247,9 +247,9 @@ vim.api.nvim_create_autocmd('BufWritePre', {
   pattern = '*',
   callback = function()
     -- Save cursor position
-    local save_cursor = vim.fn.getpos('.')
+    local save_cursor = vim.fn.getpos '.'
     -- Remove trailing whitespace
-    vim.cmd([[%s/\s\+$//e]])
+    vim.cmd [[%s/\s\+$//e]]
     -- Restore cursor position
     vim.fn.setpos('.', save_cursor)
   end,
@@ -864,6 +864,17 @@ require('lazy').setup({
               vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
             end, '[T]oggle Inlay [H]ints')
           end
+
+          local diagnostics_active = true
+          vim.keymap.set('n', '<leader>td', function()
+            if diagnostics_active then
+              vim.diagnostic.hide()
+              diagnostics_active = false
+            else
+              vim.diagnostic.show()
+              diagnostics_active = true
+            end
+          end, { desc = '[T]oggle [D]iagnostics' })
         end,
       })
 
@@ -1021,11 +1032,11 @@ require('lazy').setup({
               diagnosticSeverityOverrides = {
                 reportUnusedImport = 'information',
                 reportUnusedVariable = 'information',
---                reportMissingTypeStubs = 'none',
---                reportUnknownParameterType = 'none',
---                reportUnknownArgumentType = 'none',
---                reportUnknownVariableType = 'none',
---                reportUnknownMemberType = 'none',
+                --                reportMissingTypeStubs = 'none',
+                --                reportUnknownParameterType = 'none',
+                --                reportUnknownArgumentType = 'none',
+                --                reportUnknownVariableType = 'none',
+                --                reportUnknownMemberType = 'none',
               },
             },
           },
@@ -1041,7 +1052,7 @@ require('lazy').setup({
       })
 
       -- Enable the config for Python files
-      vim.lsp.enable('basedpyright')
+      vim.lsp.enable 'basedpyright'
     end,
   },
 
